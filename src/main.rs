@@ -1,8 +1,8 @@
-mod day_20;
+mod day_25;
 #[allow(unused_imports)]
 mod util;
 
 #[allow(unused_variables)]
 fn main() {
-    day_20::run()
+    day_25::run()
 }
