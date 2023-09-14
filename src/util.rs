@@ -1,9 +1,12 @@
 #[allow(dead_code)]
-pub fn read_lines(file: &str) -> Vec<String> {
+pub fn read_str(file: &str) -> String {
     let path = format!("data/{}.txt", file);
-    std::fs::read_to_string(path)
-        .unwrap()
-        .trim()
+    std::fs::read_to_string(path).unwrap()
+}
+
+#[allow(dead_code)]
+pub fn read_lines(file: &str) -> Vec<String> {
+    read_str(file)
         .lines()
         .map(|line| line.to_string())
         .collect()
@@ -20,7 +23,7 @@ pub fn lines_to_blocks(lines: Vec<String>) -> Vec<Vec<String>> {
                 block = Vec::new();
             }
         } else {
-            block.push(line);
+            block.push(line.to_string());
         }
     }
     if !block.is_empty() {
@@ -31,12 +34,12 @@ pub fn lines_to_blocks(lines: Vec<String>) -> Vec<Vec<String>> {
 }
 
 #[allow(dead_code)]
-pub fn tokenize(line: &String) -> Vec<String> {
+pub fn tokenize(line: &str) -> Vec<String> {
     line.split_whitespace().map(|s| s.to_string()).collect()
 }
 
 #[allow(dead_code)]
-pub fn read_blocks(file: &String) -> Vec<Vec<String>> {
+pub fn read_blocks(file: &str) -> Vec<Vec<String>> {
     lines_to_blocks(read_lines(file))
 }
 
