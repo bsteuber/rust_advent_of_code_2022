@@ -89,7 +89,8 @@ impl Blueprint {
         prod_geode.required_resources.items[ORE] = tokens[27].parse().unwrap();
         prod_geode.required_resources.items[OBSIDIAN] = tokens[30].parse().unwrap();
         prod_geode.production_increase.items[GEODE] = 1;
-        let actions = vec![prod_ore, prod_clay, prod_obs, prod_geode];
+        // let actions = vec![prod_ore, prod_clay, prod_obs, prod_geode];
+        let actions = vec![prod_geode, prod_obs, prod_clay, prod_ore];
         let mut max_required = Resources::empty();
         for e in 0..ELEMENTS {
             for action in &actions {
@@ -98,6 +99,7 @@ impl Blueprint {
                 }
             }
         }
+
         Self {
             actions,
             max_required,
@@ -113,6 +115,7 @@ struct SearchState {
     minute: usize,
     production: Resources,
     resources: Resources,
+    history: Vec<usize>,
 }
 
 impl SearchState {
@@ -121,6 +124,7 @@ impl SearchState {
             minute: 0,
             production: Resources::initial_production(),
             resources: Resources::empty(),
+            history: vec![],
         }
     }
 
@@ -140,25 +144,31 @@ impl SearchState {
 
 struct Search<'a> {
     blueprint: &'a Blueprint,
-    cache: HashMap<SearchState, usize>,
+    // cache: HashMap<SearchState, usize>,
     time_available: usize,
+    max_geodes: usize,
 }
 
 impl<'a> Search<'a> {
     fn run(blueprint: &'a Blueprint, time_available: usize) -> usize {
         let mut search = Self {
             blueprint,
-            cache: HashMap::new(),
+            // cache: HashMap::new(),
             time_available,
+            max_geodes: 0,
         };
-        search.find_max_geodes(&SearchState::new())
+        search.find_max_geodes(&SearchState::new());
+        search.max_geodes
     }
 
     fn time_step(&mut self, state: &mut SearchState) -> bool {
         state.minute += 1;
         state.resources = state.resources + state.production;
         if state.minute == self.time_available {
-            // println!("Time ended! Geodes: {}", geodes);
+            if state.resources.items[GEODE] > self.max_geodes {
+                self.max_geodes = state.resources.items[GEODE];
+                // println!("New max: {}, History: {:?}", self.max_geodes, state.history)
+            }
             false
         } else {
             true
@@ -179,44 +189,61 @@ impl<'a> Search<'a> {
         true
     }
 
-    fn find_max_geodes(&mut self, state: &SearchState) -> usize {
-        if let Some(geodes) = self.cache.get(state) {
-            return *geodes;
+    fn max_possible_geodes(&self, state: &SearchState) -> Amount {
+        let mut minute = state.minute;
+        let mut geodes = state.resources.items[GEODE];
+        let mut prod = state.production.items[GEODE];
+        while minute < self.time_available {
+            geodes += prod;
+            prod += 1;
+            minute += 1;
         }
-        let mut geodes = 0;
+        geodes
+    }
+
+    fn find_max_geodes(&mut self, state: &SearchState) {
+        let max_possible = self.max_possible_geodes(state);
+        if max_possible < self.max_geodes {
+            // println!(
+            //     "Aborting at time {}, max possible: {}",
+            //     state.minute, max_possible
+            // );
+            return;
+        }
+        // if let Some(geodes) = self.cache.get(state) {
+        //     return *geodes;
+        // }
         // println!("Search {}min, {:?} prod", state.minute, state.production);
         'action: for action in &self.blueprint.actions {
             if self.should_eventually_apply(state, action) {
                 // println!("Awaiting action {:?}", action.production_increase);
                 let mut state = state.clone();
+                state.history.push(
+                    action
+                        .production_increase
+                        .items
+                        .iter()
+                        .position(|x| *x > 0usize)
+                        .unwrap(),
+                );
                 while !state.can_apply(action) {
                     if !self.time_step(&mut state) {
-                        if state.resources.items[GEODE] > geodes {
-                            geodes = state.resources.items[GEODE];
-                        }
                         continue 'action;
                     }
                 }
                 if !self.time_step(&mut state) {
-                    if state.resources.items[GEODE] > geodes {
-                        geodes = state.resources.items[GEODE];
-                    }
                     continue 'action;
                 }
                 state.apply(action);
-                let inner = self.find_max_geodes(&state);
-                if inner > geodes {
-                    geodes = inner
-                };
+                self.find_max_geodes(&state);
             }
         }
-        self.cache.insert(state.clone(), geodes);
-        geodes
+        // self.cache.insert(state.clone(), geodes);
     }
 }
 
 pub fn run() {
-    let blueprints = Blueprint::parse_all("19-test");
+    let blueprints = Blueprint::parse_all("19-input");
     // let blueprints = Blueprint::parse_all("19-input");
     let quality_sum: usize = blueprints
         .iter()
@@ -235,7 +262,7 @@ pub fn run() {
         .take(3)
         .map(|blueprint| {
             println!("Blueprint");
-            let res = Search::run(blueprint, 26);
+            let res = Search::run(blueprint, 32);
             println!("Res: {}", res);
             res
         })
