@@ -342,7 +342,9 @@ impl Solver {
             Step::Forward => {
                 if on_cube {
                     if let Some(position) = self.cube_links.get(&self.position) {
-                        self.position = *position;
+                        if !matches!(self.map.tiles[position.row][position.col], Tile::Block) {
+                            self.position = *position;
+                        }
                         return;
                     }
                 }
@@ -367,8 +369,21 @@ impl Solver {
     }
 
     fn run(&mut self, on_cube: bool) {
-        for step in &self.path.clone() {
-            // println!("\nStep {:?}", step);
+        let mut fw = 0;
+        for (i, step) in self.path.clone().iter().enumerate() {
+            if i < 10000 {
+                if let Step::Forward = step {
+                    fw += 1;
+                } else {
+                    if fw > 0 {
+                        println!("Forward {}", fw);
+                        fw = 0;
+                    }
+                    self.print_state();
+                    println!("\nStep {:?}", step);
+                }
+            }
+
             self.go_step(step, on_cube);
             // println!("{:?}", self.position);
         }
@@ -377,8 +392,33 @@ impl Solver {
     fn solution_pos(&self) -> (usize, usize) {
         (self.position.row + 1, self.position.col + 1)
     }
+
+    fn print_state(&self) {
+        println!();
+        for (y, row) in self.map.tiles.iter().enumerate() {
+            for (x, tile) in row.iter().enumerate() {
+                let c = if self.position.row == y && self.position.col == x {
+                    match self.position.direction {
+                        Direction::Up => '^',
+                        Direction::Down => 'v',
+                        Direction::Left => '<',
+                        Direction::Right => '>',
+                    }
+                } else {
+                    match tile {
+                        Tile::Block => '#',
+                        Tile::Empty => '.',
+                        Tile::Wrap => ' ',
+                    }
+                };
+                print!("{}", c);
+            }
+            println!()
+        }
+    }
 }
 
+#[allow(dead_code)]
 fn part_1(mut solver: Solver) {
     solver.run(false);
     let facing = solver.position.direction.to_facing();
@@ -398,7 +438,7 @@ fn part_2(mut solver: Solver) {
 pub fn run() {
     // let solver = Solver::parse("22-test");
     let solver = Solver::parse("22-input");
-    solver.print_cube_links();
-    part_1(solver.clone());
+    // solver.print_cube_links();
+    // part_1(solver.clone());
     part_2(solver.clone());
 }

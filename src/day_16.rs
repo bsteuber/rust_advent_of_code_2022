@@ -103,7 +103,6 @@ impl CaveSystem {
     }
 
     fn find_max_flow(&mut self, time_limit: usize, limit_valves: Option<Vec<usize>>) -> usize {
-        self.cache.clear();
         let is_open = match limit_valves {
             None => vec![false; self.valve_count],
             Some(valves) => {
